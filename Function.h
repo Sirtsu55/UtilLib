@@ -8,16 +8,16 @@
 // Code below is based on
 // https://codereview.stackexchange.com/questions/277865/tfunction-stdfunction-replacement-for-event-system
 
-template <typename T>
+template<typename T>
 class Function;
 
-template <typename R, typename... Args>
+template<typename R, typename... Args>
 class Function<R(Args...)>
 {
 public:
     using FunctionPtrStatic = R (*)(Args...);
 
-    template <typename C>
+    template<typename C>
     using FunctionPtrMember = R (C::*)(Args...);
 
     /// --------------- Constructors ---------------
@@ -33,10 +33,10 @@ public:
     /// @tparam C Type of the class/struct.
     /// @param function The member function to bind.
     /// @param instance pointer to the instance of the class.
-    template <typename C>
-    Function(C *instance, FunctionPtrMember<C> function)
+    template<typename C>
+    Function(C* instance, FunctionPtrMember<C> function)
         : mMemberFunction(reinterpret_cast<FunctionPtrMember<Instance>>(function)),
-          mInstance(reinterpret_cast<Instance *>(instance))
+          mInstance(reinterpret_cast<Instance*>(instance))
     {
     }
 
@@ -54,11 +54,11 @@ public:
     /// @tparam C Type of the class/struct.
     /// @param function The member function to bind.
     /// @param instance pointer to the instance of the class.
-    template <typename C>
-    constexpr void Bind(C *instance, FunctionPtrMember<C> function)
+    template<typename C>
+    constexpr void Bind(C* instance, FunctionPtrMember<C> function)
     {
         mMemberFunction = reinterpret_cast<FunctionPtrMember<Instance>>(function);
-        mInstance = reinterpret_cast<Instance *>(instance);
+        mInstance = reinterpret_cast<Instance*>(instance);
     }
 
     /// --------------- Is... Functions ---------------
@@ -98,5 +98,5 @@ private:
     FunctionPtrMember<Instance> mMemberFunction;
     FunctionPtrStatic mFunction;
 
-    Instance *mInstance;
+    Instance* mInstance;
 };

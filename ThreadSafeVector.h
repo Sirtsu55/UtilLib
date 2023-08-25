@@ -1,7 +1,7 @@
 
 /// @brief A thread safe vector.
 /// @tparam T The type of the vector.
-template <typename T>
+template<typename T>
 class TSVector : public Vector<T>
 {
 public:
@@ -14,13 +14,13 @@ public:
 
     /// Deleted Constructors
 
-    TSVector(const TSVector<T> &other) = delete;
+    TSVector(const TSVector<T>& other) = delete;
 
-    TSVector(TSVector<T> &&other) = delete;
+    TSVector(TSVector<T>&& other) = delete;
 
-    TSVector<T> &operator=(const TSVector<T> &other) = delete;
+    TSVector<T>& operator=(const TSVector<T>& other) = delete;
 
-    TSVector<T> &operator=(TSVector<T> &&other) = delete;
+    TSVector<T>& operator=(TSVector<T>&& other) = delete;
 
     /// --------------------------------------------------------
     /// Synchronized functions

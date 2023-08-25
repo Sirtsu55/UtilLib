@@ -1,6 +1,6 @@
 #pragma once
 
-template <typename T>
+template<typename T>
 class SharedPointerImpl
 {
 private:
@@ -10,8 +10,8 @@ private:
         /// @brief Default constructor, initializes the data and sets the reference count to 1
         InternalData() : Data(), ReferenceCount(1) {}
 
-        template <typename... Args>
-        InternalData(Args &&...args) : Data(std::forward<Args>(args)...), ReferenceCount(1)
+        template<typename... Args>
+        InternalData(Args&&... args) : Data(std::forward<Args>(args)...), ReferenceCount(1)
         {
         }
 
@@ -23,7 +23,7 @@ private:
     };
 
     /// @brief initialize the pointer with
-    SharedPointerImpl(InternalData *data) : mData(data) {}
+    SharedPointerImpl(InternalData* data) : mData(data) {}
 
 public:
     /// --------------------------------------------------------
@@ -31,8 +31,8 @@ public:
     /// --------------------------------------------------------
 
     /// @brief Create a shared pointer from template arguments.
-    template <typename... Args>
-    static constexpr SharedPointerImpl<T> CreateSharedPointer(Args &&...args)
+    template<typename... Args>
+    static constexpr SharedPointerImpl<T> CreateSharedPointer(Args&&... args)
     {
         return SharedPointerImpl<T>(new InternalData(std::forward<Args>(args)...));
     }
@@ -48,7 +48,7 @@ public:
 
     /// @brief Copy constructor, increments the reference count
     /// @param other the other shared pointer
-    SharedPointerImpl(const SharedPointerImpl &other)
+    SharedPointerImpl(const SharedPointerImpl& other)
     {
         mData = other.mData;
         AddReference();
@@ -56,7 +56,7 @@ public:
 
     /// @brief Move constructor, moves the data from the other shared pointer
     /// @param other the other shared pointer
-    SharedPointerImpl(SharedPointerImpl &&other) noexcept
+    SharedPointerImpl(SharedPointerImpl&& other) noexcept
     {
         mData = other.mData;
         other.mData = nullptr;
@@ -72,7 +72,7 @@ public:
     /// @brief Copy assignment operator, increments the reference count
     /// @param other the other shared pointer
     /// @return reference to this shared pointer
-    SharedPointerImpl &operator=(const SharedPointerImpl &other)
+    SharedPointerImpl& operator=(const SharedPointerImpl& other)
     {
         if (this != &other)
         {
@@ -88,7 +88,7 @@ public:
     /// @brief Move assignment operator, moves the data from the other shared pointer
     /// @param other the other shared pointer
     /// @return reference to this shared pointer
-    SharedPointerImpl &operator=(SharedPointerImpl &&other)
+    SharedPointerImpl& operator=(SharedPointerImpl&& other)
     {
         if (this != &other)
         {
@@ -102,11 +102,11 @@ public:
 
     /// @brief Access operator
     /// @return pointer to the data
-    T *operator->() const { return &mData->Data; }
+    T* operator->() const { return &mData->Data; }
 
     /// @brief Dereference operator
     /// @return reference to the data
-    T &operator*() const { return mData->Data; }
+    T& operator*() const { return mData->Data; }
 
     /// @brief bool operator
     /// @return true if the pointer is not null
@@ -115,7 +115,7 @@ public:
     /// @brief Equality operator
     /// @param other the other shared pointer
     /// @return true if the pointers are equal
-    bool operator==(const SharedPointerImpl &other) const { return mData == other.mData; }
+    bool operator==(const SharedPointerImpl& other) const { return mData == other.mData; }
 
     bool operator==(std::nullptr_t) const { return mData == nullptr; }
 
@@ -125,7 +125,7 @@ public:
 
     /// @brief Get the reference count
     /// @return the reference count
-    T *get() const { return &mData->Data; }
+    T* get() const { return &mData->Data; }
 
     /// @brief Get the reference count
     /// @return the reference count
@@ -155,5 +155,5 @@ private:
     }
 
     /// @brief Internal data structure for the shared pointer
-    InternalData *mData;
+    InternalData* mData;
 };
