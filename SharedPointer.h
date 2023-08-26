@@ -110,7 +110,7 @@ public:
 
     /// @brief bool operator
     /// @return true if the pointer is not null
-    operator bool() { return mData->Data != nullptr; }
+    operator bool() { return mData != nullptr; }
 
     /// @brief Equality operator
     /// @param other the other shared pointer
