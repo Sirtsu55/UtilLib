@@ -1,9 +1,13 @@
 #pragma once
-#include <iostream>
+
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <stdexcept>
+#include <functional>
+#include <cstring>
+
 #include "Function.h"
 
 class Task
@@ -89,6 +93,7 @@ private:
         uint64_t LeafCount = 0;
         uint64_t TaskHash;
         void* Data;
+        bool Executed = false;
         // Header End
     };
 
@@ -109,6 +114,15 @@ public:
     TaskGraphManager(const TaskGraphManager& other) = delete;
     TaskGraphManager(TaskGraphManager&& other) = delete;
 
+    ~TaskGraphManager()
+    {
+        for (auto& it : mGraph)
+        {
+            auto& node = it.second;
+            free(node);
+        }
+    }
+
     /// --------------------------------------------------------
     /// Task Management
     /// --------------------------------------------------------
@@ -117,7 +131,8 @@ public:
     /// @param task Task to add
     void AddTask(const Task& task) { mTasks.emplace(task.GetHash(), task); }
 
-    /// @brief Build the graph
+    /// @brief Build the graph. In the case where there are circular dependencies, the graph will be built, but the
+    /// will lead to undefined behaviour when executed.
     void BuildGraph()
     {
         uint64_t taskCount = mTasks.size();
@@ -144,6 +159,7 @@ public:
             memcpy(node, &leafCount, sizeof(uint64_t));
             memcpy(node + offsetof(TaskNodeHeader, TaskHash), &hash, sizeof(uint64_t));
             memcpy(node + offsetof(TaskNodeHeader, Data), &data, sizeof(void*));
+            memset(node + offsetof(TaskNodeHeader, Executed), 0, sizeof(bool));
 
             // Write leaf nodes
             uint32_t leafIndex = 0;
@@ -162,39 +178,12 @@ public:
         {
             auto hash = it.first;
             auto& node = it.second;
-
+            // If the node is not a dependency of any other node, it is a top node
             if (std::find(allDependencies.begin(), allDependencies.end(), hash) == allDependencies.end())
             {
                 mTopNodes.push_back(node);
             }
         }
-
-#ifndef NDEBUG
-        // Check for cycles
-        for (auto& it : mGraph)
-        {
-            const auto hash = it.first;
-            const auto& node = it.second;
-
-            // Get leaf count
-            uint64_t leafCount = 0;
-            memcpy(&leafCount, node, sizeof(uint64_t));
-
-            // Get leaf nodes
-            uint64_t* leaves = reinterpret_cast<uint64_t*>(node + headerSize);
-
-            // Check for cycles
-            for (uint64_t i = 0; i < leafCount; i++)
-            {
-                auto leaf = leaves[i];
-                if (leaf == hash)
-                {
-                    std::runtime_error("TaskGraphManager: Cycle detected in graph!");
-                    return;
-                }
-            }
-        }
-#endif // NDEBUG
     }
 
     /// @brief Execute the graph
@@ -220,17 +209,19 @@ private:
         for (uint64_t i = 0; i < leafCount; i++)
         {
             auto leaf = leaves[i];
-            if (mExecutedTasks.find(leaf) == mExecutedTasks.end())
-            {
-                auto leafNode = mGraph[leaf];
-                ExecuteNode(leafNode);
+            auto& leafNode = mGraph[leaf];
+            TaskNodeHeader* leafHeader = reinterpret_cast<TaskNodeHeader*>(leafNode);
+            if (!leafHeader->Executed) 
+            { 
+                ExecuteNode(leafNode); 
+                leafHeader->Executed = true;
             }
         }
 
         // Execute the task
         auto& task = mTasks[header->TaskHash];
         task.Execute(task.GetData());
-        mExecutedTasks.emplace(header->TaskHash);
+        header->Executed = true;
     }
 
 private:
@@ -242,9 +233,6 @@ private:
 
     /// @brief The Top Nodes that have dependencies
     std::vector<char*> mTopNodes;
-
-    /// @brief The executed tasks
-    std::unordered_set<uint64_t> mExecutedTasks;
 };
 
 // Example usage:
