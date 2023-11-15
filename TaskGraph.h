@@ -83,6 +83,8 @@ private:
     std::unordered_set<uint64_t> mDependencies;
 
     inline static std::hash<std::string> hasher = std::hash<std::string> {};
+
+    friend class TaskGraphManager;
 };
 
 class TaskGraphManager
@@ -132,15 +134,35 @@ public:
     /// @param task Task to add
     void AddTask(const Task& task) { mTasks.emplace(task.GetHash(), task); }
 
+    /// @brief Remove a task from the graph, if the task is dependent on other tasks, building the graph will throw an
+    /// exception
+    /// @param name Hash of the task to remove
+    void RemoveTask(const std::string& name) { RemoveTask(Task::hasher(name)); }
+
+    /// @brief Remove a task from the graph, if the task is dependent on other tasks, building the graph will throw an
+    /// exception
+    /// @param hash Hash of the task to remove
+    void RemoveTask(const uint64_t hash)
+    {
+        // Check if the task exists
+        if (mTasks.find(hash) == mTasks.end())
+            return;
+        // Remove the task
+        mTasks.erase(hash);
+    }
+
     /// @brief Build the graph. In the case where there are circular dependencies, the graph will be built, but the
-    /// will lead to undefined behaviour when executed.
+    /// will lead to undefined behaviour when executed. The graph will be built from scratch, so if you add a task
+    /// after building the graph, you will have to rebuild the graph.
     void BuildGraph()
     {
-        uint64_t taskCount = mTasks.size();
         const uint64_t headerSize = sizeof(TaskNodeHeader);
         const uint64_t leafSize = sizeof(uint64_t);
         std::vector<uint64_t> allDependencies = {};
 
+        ClearGraph();
+
+        // Build the graph from scratch
         for (auto& it : mTasks)
         {
             auto hash = it.first;
@@ -170,6 +192,16 @@ public:
             {
                 memcpy(node + headerSize + (leafIndex * leafSize), &leaf, sizeof(uint64_t));
                 leafIndex++;
+            }
+
+            // Validate that all dependencies exist
+            for (auto& leaf : dependencies)
+            {
+                if (mTasks.find(leaf) == mTasks.end())
+                {
+                    throw std::runtime_error("TaskGraphManager: Task " + task.GetName() +
+                                             " has a dependency that does not exist!");
+                }
             }
 
             // Add node to the graph
@@ -237,6 +269,18 @@ private:
         auto& task = mTasks[header->TaskHash];
         task.Execute(task.GetData());
         header->Executed = true;
+    }
+
+    void ClearGraph()
+    {
+        for (auto& it : mGraph)
+        {
+            auto& node = it.second;
+            free(node);
+        }
+
+        mGraph.clear();
+        mTopNodes.clear();
     }
 
 private:
