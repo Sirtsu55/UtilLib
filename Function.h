@@ -20,7 +20,9 @@ public:
     template<typename C>
     using FunctionPtrMember = R (C::*)(Args...);
 
-    /// --------------- Constructors ---------------
+    /// --------------------------------------------------------
+    /// Constructors
+    /// --------------------------------------------------------
 
     /// @brief Constructs an empty function.
     Function() : mMemberFunction(nullptr), mFunction(nullptr), mInstance(nullptr) {}
@@ -40,7 +42,9 @@ public:
     {
     }
 
-    /// --------------- Bind Functions ---------------
+    /// --------------------------------------------------------
+    /// Bind Functions
+    /// --------------------------------------------------------
 
     /// @brief Binds a static function to the function.
     /// @param function The static function to bind.
@@ -61,7 +65,9 @@ public:
         mInstance = reinterpret_cast<Instance*>(instance);
     }
 
-    /// --------------- Is... Functions ---------------
+    /// --------------------------------------------------------
+    /// Is... Functions
+    /// --------------------------------------------------------
 
     /// @brief Checks if the function is bound to a member function.
     /// @return True if the function is bound to a member function, false otherwise.
@@ -71,7 +77,9 @@ public:
     /// @return True if the function is bound to a static function, false otherwise.
     constexpr bool IsStatic() const { return mInstance == nullptr; }
 
-    /// --------------- Operators ---------------
+    /// --------------------------------------------------------
+    /// Operators
+    /// --------------------------------------------------------
 
     /// @brief Invokes the function.
     /// @param ...args Arguments to pass to the function.

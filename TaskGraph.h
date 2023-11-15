@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "Function.h"
+#include "JobSystem.h"
 
 class Task
 {
@@ -98,7 +99,7 @@ private:
     };
 
     template<uint32_t N>
-    struct TaskNode // pseudo code for a node, this struct isn't used, but here to help visualize the memory layout
+    struct TaskNode // This struct isn't used, but here to help visualize the memory layout
     {
         TaskNodeHeader Header;
         // Leaf nodes to execute
@@ -138,7 +139,7 @@ public:
         uint64_t taskCount = mTasks.size();
         const uint64_t headerSize = sizeof(TaskNodeHeader);
         const uint64_t leafSize = sizeof(uint64_t);
-        std::vector<uint64_t> allDependencies;
+        std::vector<uint64_t> allDependencies = {};
 
         for (auto& it : mTasks)
         {
@@ -151,15 +152,17 @@ public:
             uint64_t leafCount = dependencies.size();
 
             // Allocate memory for the node
+            // TODO: Add option to use a memory pool
             uint64_t nodeSize = headerSize + (leafCount * leafSize);
             char* node = reinterpret_cast<char*>(malloc(nodeSize));
             void* data = task.GetData();
 
-            // Write header
-            memcpy(node, &leafCount, sizeof(uint64_t));
-            memcpy(node + offsetof(TaskNodeHeader, TaskHash), &hash, sizeof(uint64_t));
-            memcpy(node + offsetof(TaskNodeHeader, Data), &data, sizeof(void*));
-            memset(node + offsetof(TaskNodeHeader, Executed), 0, sizeof(bool));
+            TaskNodeHeader* header = reinterpret_cast<TaskNodeHeader*>(node);
+
+            header->LeafCount = leafCount;
+            header->TaskHash = hash;
+            header->Data = data;
+            header->Executed = false;
 
             // Write leaf nodes
             uint32_t leafIndex = 0;
@@ -178,6 +181,7 @@ public:
         {
             auto hash = it.first;
             auto& node = it.second;
+
             // If the node is not a dependency of any other node, it is a top node
             if (std::find(allDependencies.begin(), allDependencies.end(), hash) == allDependencies.end())
             {
@@ -192,33 +196,43 @@ public:
         for (char* node : mTopNodes) { ExecuteNode(node); }
     }
 
+    /// @brief Execute the graph in parallel
+    /// @param jobSystem Job system to use
+    void ExecuteGraphParallel(JobSystem& jobSystem)
+    {
+        for (char* node : mTopNodes)
+        {
+            jobSystem.AddJob(Function<void(void*)>(this, &TaskGraphManager::ExecuteNode), node);
+        }
+    }
+
 private:
     /// @brief Execute a node, for recursive calls
-    void ExecuteNode(char* node)
+    void ExecuteNode(void* node)
     {
         // Get the header
         TaskNodeHeader* header = reinterpret_cast<TaskNodeHeader*>(node);
+
+        // Optimization: If the task has already been executed, don't execute it again
+        // and go through the leaf nodes
+        if (header->Executed)
+            return;
 
         // Get the leaf count
         const uint64_t leafCount = header->LeafCount;
 
         // Get the leaf nodes
-        uint64_t* leaves = reinterpret_cast<uint64_t*>(node + sizeof(TaskNodeHeader));
+        uint64_t* leaves = reinterpret_cast<uint64_t*>(reinterpret_cast<char*>(node) + sizeof(TaskNodeHeader));
 
         // Execute the leaf nodes
         for (uint64_t i = 0; i < leafCount; i++)
         {
             auto leaf = leaves[i];
             auto& leafNode = mGraph[leaf];
-            TaskNodeHeader* leafHeader = reinterpret_cast<TaskNodeHeader*>(leafNode);
-            if (!leafHeader->Executed) 
-            { 
-                ExecuteNode(leafNode); 
-                leafHeader->Executed = true;
-            }
+            ExecuteNode(leafNode);
         }
 
-        // Execute the task
+        // Execute the task after all leaf nodes have been executed
         auto& task = mTasks[header->TaskHash];
         task.Execute(task.GetData());
         header->Executed = true;
