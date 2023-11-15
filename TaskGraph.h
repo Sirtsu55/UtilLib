@@ -196,7 +196,8 @@ public:
         for (char* node : mTopNodes) { ExecuteNode(node); }
     }
 
-    /// @brief Execute the graph in parallel
+    /// @brief Execute the graph in parallel. This doesn't pause execution on this thread, but instead uses the job
+    /// system to execute the graph in parallel. So the user will have to wait for the job system to finish.
     /// @param jobSystem Job system to use
     void ExecuteGraphParallel(JobSystem& jobSystem)
     {
