@@ -96,7 +96,7 @@ private:
         uint64_t LeafCount = 0;
         uint64_t TaskHash;
         void* Data;
-        bool Executed = false;
+        std::atomic<bool> Executed;
         // Header End
     };
 
@@ -250,6 +250,9 @@ private:
         // and go through the leaf nodes
         if (header->Executed)
             return;
+        // Set the task as executedright after checking if it has been executed
+        // to avoid threads executing the same task
+        header->Executed = true;
 
         // Get the leaf count
         const uint64_t leafCount = header->LeafCount;
@@ -268,7 +271,6 @@ private:
         // Execute the task after all leaf nodes have been executed
         auto& task = mTasks[header->TaskHash];
         task.Execute(task.GetData());
-        header->Executed = true;
     }
 
     void ClearGraph()
