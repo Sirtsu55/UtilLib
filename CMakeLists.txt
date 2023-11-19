@@ -12,4 +12,4 @@ set(CMAKE_CXX_STANDARD 20)
 add_library(UtilLib INTERFACE)
 
 # Add include directories
-target_include_directories(UtilLib INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/")
+target_include_directories(UtilLib INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/>)
