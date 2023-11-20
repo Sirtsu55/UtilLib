@@ -25,7 +25,7 @@ public:
     using EventEnum_t = std::underlying_type_t<E>;
 
     /// @brief Function pointer type to subscribe to an event of type T.
-    using EventFn = Function<void(T&)>;
+    using EventFn = Function<void(const T&)>;
 
     /// @brief Map of event subscribers.
     using SubscriberMap = std::unordered_map<EventEnum_t, std::vector<EventFn>>;
