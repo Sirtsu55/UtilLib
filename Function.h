@@ -108,3 +108,134 @@ private:
 
     Instance* mInstance;
 };
+
+// Code below is based on
+// https://www.codeproject.com/Articles/313312/Cplusplus11-Lambda-Storage-Without-libcplusplus
+// and code style modified to match the rest of the project
+
+template<typename T>
+class LambdaExecutor;
+
+template<typename Out, typename... In>
+class LambdaExecutor<Out(In...)>
+{
+public:
+    Out operator()(In... in)
+    {
+        assert(lambda != nullptr);
+        return ExecuteLambda(lambda, in...);
+    }
+
+protected:
+    LambdaExecutor(void*& lambda) : lambda(lambda) {}
+
+    ~LambdaExecutor() {}
+
+    template<typename T>
+    void GenerateExecutor(T const& lambda)
+    {
+        ExecuteLambda = [](void* lambda, In... arguments) -> Out { return ((T*)lambda)->operator()(arguments...); };
+    }
+
+    void ReceiveExecutor(LambdaExecutor<Out(In...)> const& other) { ExecuteLambda = other.ExecuteLambda; }
+
+private:
+    void*& lambda;
+    Out (*ExecuteLambda)(void*, In...);
+};
+
+template<typename... In>
+class LambdaExecutor<void(In...)>
+{
+public:
+    void operator()(In... in)
+    {
+        assert(lambda != nullptr);
+        ExecuteLambda(lambda, in...);
+    }
+
+protected:
+    LambdaExecutor(void*& lambda) : lambda(lambda) {}
+
+    ~LambdaExecutor() {}
+
+    template<typename T>
+    void GenerateExecutor(T const& lambda)
+    {
+        ExecuteLambda = [](void* lambda, In... arguments) { return ((T*)lambda)->operator()(arguments...); };
+    }
+
+    void ReceiveExecutor(LambdaExecutor<void(In...)> const& other) { ExecuteLambda = other.ExecuteLambda; }
+
+private:
+    void*& lambda;
+    void (*ExecuteLambda)(void*, In...);
+};
+
+template<typename T>
+class LambdaFunction;
+
+template<typename Out, typename... In>
+class LambdaFunction<Out(In...)> : public LambdaExecutor<Out(In...)>
+{
+public:
+    LambdaFunction() : LambdaExecutor<Out(In...)>(lambda), lambda(nullptr), DeleteLambda(nullptr), CopyLambda(nullptr)
+    {
+    }
+
+    LambdaFunction(LambdaFunction<Out(In...)> const& other)
+        : LambdaExecutor<Out(In...)>(lambda), lambda(other.CopyLambda ? other.CopyLambda(other.lambda) : nullptr),
+          DeleteLambda(other.DeleteLambda), CopyLambda(other.CopyLambda)
+    {
+        ReceiveExecutor(other);
+    }
+
+    template<typename T>
+    LambdaFunction(T const& lambda) : LambdaExecutor<Out(In...)>(this->lambda), lambda(nullptr)
+    {
+        Copy(lambda);
+    }
+
+    ~LambdaFunction()
+    {
+        if (DeleteLambda != nullptr)
+            DeleteLambda(lambda);
+    }
+
+    LambdaFunction<Out(In...)>& operator=(LambdaFunction<Out(In...)> const& other)
+    {
+        this->lambda = other.CopyLambda ? other.CopyLambda(other.lambda) : nullptr;
+        ReceiveExecutor(other);
+        this->DeleteLambda = other.DeleteLambda;
+        this->CopyLambda = other.CopyLambda;
+        return *this;
+    }
+
+    template<typename T>
+    LambdaFunction<Out(In...)>& operator=(T const& lambda)
+    {
+        Copy(lambda);
+        return *this;
+    }
+
+    operator bool() { return lambda != nullptr; }
+
+private:
+    template<typename T>
+    void Copy(T const& lambda)
+    {
+        if (this->lambda != nullptr)
+            this->DeleteLambda(this->lambda);
+        this->lambda = new T(lambda);
+
+        this->GenerateExecutor(lambda);
+
+        this->DeleteLambda = [](void* lambda) { delete (T*)lambda; };
+
+        this->CopyLambda = [](void* lambda) -> void* { return lambda ? new T(*(T*)lambda) : nullptr; };
+    }
+
+    void* lambda;
+    void (*DeleteLambda)(void*);
+    void* (*CopyLambda)(void*);
+};
