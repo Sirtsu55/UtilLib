@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utility>
+#include "SharedPointer.h"
 
 // Add pragma to disable casting pointer to function to another pointer to function
 #pragma pointers_to_members(full_generality, virtual_inheritance)
@@ -39,6 +40,19 @@ public:
     Function(C* instance, FunctionPtrMember<C> function)
         : mMemberFunction(reinterpret_cast<FunctionPtrMember<Instance>>(function)),
           mInstance(reinterpret_cast<Instance*>(instance))
+    {
+    }
+
+    /// @brief Constructs a function from a member function, but with a shared pointer. This stores no reference
+    /// to the shared pointer, so it is up to the user to ensure the shared pointer is valid for the lifetime of
+    /// the function.
+    /// @tparam C Type of the class/struct.
+    /// @param instance The shared pointer to the instance of the class.
+    /// @param function The member function to bind.
+    template<typename C>
+    Function(const SharedPointerImpl<C>& instance, FunctionPtrMember<C> function)
+        : mMemberFunction(reinterpret_cast<FunctionPtrMember<Instance>>(function)),
+          mInstance(reinterpret_cast<Instance*>(instance.get()))
     {
     }
 
