@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utility>
+#include <cassert>
 #include "SharedPointer.h"
 
 // Add pragma to disable casting pointer to function to another pointer to function
@@ -101,9 +102,15 @@ public:
     constexpr R operator()(Args... args) const
     {
         if (mInstance)
+        {
+            assert(mInstance != nullptr);
             return (mInstance->*mMemberFunction)(std::forward<Args>(args)...);
+        }
         else
+        {
+            assert(mFunction != nullptr);
             return mFunction(std::forward<Args>(args)...);
+        }
     }
 
     /// @brief Checks if the function is bound to a function.
@@ -201,7 +208,7 @@ public:
         : LambdaExecutor<Out(In...)>(lambda), lambda(other.CopyLambda ? other.CopyLambda(other.lambda) : nullptr),
           DeleteLambda(other.DeleteLambda), CopyLambda(other.CopyLambda)
     {
-        ReceiveExecutor(other);
+        this->ReceiveExecutor(other);
     }
 
     template<typename T>
@@ -219,7 +226,7 @@ public:
     LambdaFunction<Out(In...)>& operator=(LambdaFunction<Out(In...)> const& other)
     {
         this->lambda = other.CopyLambda ? other.CopyLambda(other.lambda) : nullptr;
-        ReceiveExecutor(other);
+        this->ReceiveExecutor(other);
         this->DeleteLambda = other.DeleteLambda;
         this->CopyLambda = other.CopyLambda;
         return *this;
