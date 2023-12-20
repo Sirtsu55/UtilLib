@@ -15,15 +15,12 @@ private:
         {
         }
 
-        /// @brief Instance of the data
-        T Data;
-
         /// @brief Reference count
         uint32_t ReferenceCount;
-    };
 
-    /// @brief initialize the pointer with
-    SharedPointerImpl(InternalData* data) : mData(data) {}
+        /// @brief Instance of the data
+        T Data;
+    };
 
 public:
     /// --------------------------------------------------------
@@ -43,9 +40,6 @@ public:
     /// @breif Default constructor, null pointer
     SharedPointerImpl() : mData(nullptr) {}
 
-    /// @brief Constructor, initializes the pointer and sets the reference count to 1
-    SharedPointerImpl(std::nullptr_t) : mData(nullptr) {}
-
     /// @brief Copy constructor, increments the reference count
     /// @param other the other shared pointer
     SharedPointerImpl(const SharedPointerImpl& other)
@@ -61,6 +55,9 @@ public:
         mData = other.mData;
         other.mData = nullptr;
     }
+
+    /// @brief Constructor with nullptr
+    SharedPointerImpl(std::nullptr_t) : mData(nullptr) {}
 
     /// @brief Destructor, decrements the reference count and deletes the data if the reference count is 0
     ~SharedPointerImpl() { RemoveReference(); }
@@ -100,6 +97,32 @@ public:
         return *this;
     }
 
+    /// @brief Copy assignment operator with downcast, increments the reference count
+    /// @param other the other shared pointer
+    /// @return reference to this shared pointer
+    template<typename U>
+    SharedPointerImpl& operator=(const SharedPointerImpl<U>& other)
+    {
+        // Check if the pointers are the same
+        if (this != &other)
+        {
+            RemoveReference();
+
+            mData = other.mData;
+
+            AddReference();
+        }
+        return *this;
+    }
+
+    /// @brief Assignment operator, sets the pointer to null
+    SharedPointerImpl& operator=(std::nullptr_t)
+    {
+        RemoveReference();
+        mData = nullptr;
+        return *this;
+    }
+
     /// @brief Access operator
     /// @return pointer to the data
     T* operator->() const { return &mData->Data; }
@@ -135,9 +158,44 @@ public:
     /// @return true if the reference count is 1
     bool unique() { return mData->ReferenceCount == 1; }
 
+    /// @brief Cast the shared pointer to a shared pointer of another type, this checks if the cast is valid and if it
+    /// is invalid it returns a null shared pointer
+    /// @tparam U the type to cast to
+    /// @return the down casted shared pointer, or a null shared pointer if the cast is invalid
+    template<typename U>
+    SharedPointerImpl<U> dyn_cast()
+    {
+        // Check if the cast is valid
+        U* casted = dynamic_cast<U*>(&mData->Data);
+
+        if (casted == nullptr)
+        {
+            return SharedPointerImpl<U>(nullptr);
+        }
+
+        // Add reference to the data, because the new shared pointer will have a reference to it
+        AddReference();
+        return SharedPointerImpl<U>(mData);
+    }
+
+    /// @brief Cast the shared pointer to a shared pointer of another type, this doesn't check if the cast is valid so
+    /// in case of an invalid cast it is undefined behavior
+    /// @tparam U the type to cast to
+    /// @return the casted shared pointer
+    template<typename U>
+    SharedPointerImpl<U> cast()
+    {
+        // Add reference to the data, because the new shared pointer will have a reference to it
+        AddReference();
+        return SharedPointerImpl<U>(mData);
+    }
+
     /// @todo maybe implement standard library functions? not sure if necessary though
 
 private:
+    /// @brief Initialize the shared pointer with a pointer to the data, only used by the static create functions
+    SharedPointerImpl(InternalData* data) : mData(data) {}
+
     inline void AddReference()
     {
         if (mData == nullptr)
