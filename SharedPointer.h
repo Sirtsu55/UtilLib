@@ -3,7 +3,7 @@
 template<typename T>
 class SharedPointerImpl
 {
-private:
+public:
     /// @brief Internal data structure for the shared pointer
     struct InternalData
     {
@@ -26,16 +26,6 @@ public:
     /// --------------------------------------------------------
     /// Constructors & Destructor
     /// --------------------------------------------------------
-
-    /// @brief Create a shared pointer from template arguments.
-    template<typename... Args>
-    static constexpr SharedPointerImpl<T> CreateSharedPointer(Args&&... args)
-    {
-        return SharedPointerImpl<T>(new InternalData(std::forward<Args>(args)...));
-    }
-
-    /// @brief Create a shared pointer with default constructor of the underlying type
-    static constexpr SharedPointerImpl<T> CreateSharedPointer() { return SharedPointerImpl<T>(new InternalData()); }
 
     /// @breif Default constructor, null pointer
     SharedPointerImpl() : mData(nullptr) {}
@@ -165,9 +155,9 @@ public:
     template<typename U>
     SharedPointerImpl<U> dyn_cast()
     {
-        // Check if the cast is valid
         U* casted = dynamic_cast<U*>(&mData->Data);
 
+        // Check if the cast is invalid
         if (casted == nullptr)
         {
             return SharedPointerImpl<U>(nullptr);
@@ -175,7 +165,8 @@ public:
 
         // Add reference to the data, because the new shared pointer will have a reference to it
         AddReference();
-        return SharedPointerImpl<U>(mData);
+
+        return SharedPointerImpl<U>(reinterpret_cast<SharedPointerImpl<U>::InternalData*>(mData));
     }
 
     /// @brief Cast the shared pointer to a shared pointer of another type, this doesn't check if the cast is valid so
@@ -190,12 +181,11 @@ public:
         return SharedPointerImpl<U>(mData);
     }
 
-    /// @todo maybe implement standard library functions? not sure if necessary though
-
-private:
-    /// @brief Initialize the shared pointer with a pointer to the data, only used by the static create functions
+    /// @brief Initialize the shared pointer with a pointer to the internal data
+    /// @param data the pointer to the internal data
     SharedPointerImpl(InternalData* data) : mData(data) {}
 
+private:
     inline void AddReference()
     {
         if (mData == nullptr)
@@ -215,3 +205,17 @@ private:
     /// @brief Internal data structure for the shared pointer
     InternalData* mData;
 };
+
+/// @brief Create a shared pointer from template arguments.
+template<typename T, typename... Args>
+static constexpr SharedPointerImpl<T> CreateSharedPointer(Args&&... args)
+{
+    return SharedPointerImpl<T>(new SharedPointerImpl<T>::InternalData(std::forward<Args>(args)...));
+}
+
+/// @brief Create a shared pointer with default constructor of the underlying type
+template<typename T>
+static constexpr SharedPointerImpl<T> CreateSharedPointer()
+{
+    return SharedPointerImpl<T>(new SharedPointerImpl<T>::InternalData());
+}
