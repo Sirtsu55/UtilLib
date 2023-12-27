@@ -51,7 +51,7 @@ public:
     /// @param instance The shared pointer to the instance of the class.
     /// @param function The member function to bind.
     template<typename C>
-    Function(const SharedPointerImpl<C>& instance, FunctionPtrMember<C> function)
+    Function(const SharedPointer<C>& instance, FunctionPtrMember<C> function)
         : mMemberFunction(reinterpret_cast<FunctionPtrMember<Instance>>(function)),
           mInstance(reinterpret_cast<Instance*>(instance.get()))
     {
