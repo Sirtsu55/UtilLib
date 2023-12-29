@@ -1,24 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <filesystem>
-#include <cstdint>
-#include <fstream>
-#include <optional>
-
-/// @brief Index of a vertex, normal, and texture coordinate.
-struct Index
-{
-    /// @brief Index of the vertex.
-    uint32_t vIdx = 0;
-
-    /// @brief Index of the normal.
-    uint32_t vnIdx = 0;
-
-    /// @brief Index of the texture coordinate.
-    uint32_t vtIdx = 0;
-};
+#include < vector>
+#include < string>
+#include < cstdint>
+#include < fstream>
+#include < optional>
 
 struct Vec3
 {
@@ -46,14 +32,20 @@ struct Mesh
     /// @brief Positions of the vertices.
     std::vector<Vec3> Positions = {};
 
-    /// @brief Normals of the vertices.
+    /// @brief Normals of the vertices. Empty if the mesh doesn't have normals.
     std::vector<Vec3> Normals = {};
 
-    /// @brief Texture coordinates of the vertices.
+    /// @brief Texture coordinates of the vertices. Empty if the mesh doesn't have texture coordinates.
     std::vector<Vec2> TexCoords = {};
 
-    /// @brief Indices of the vertices.
-    std::vector<Index> Indices = {};
+    /// @brief Position indices.
+    std::vector<uint32_t> vIDX = {};
+
+    /// @brief Normal indices.
+    std::vector<uint32_t> vnIDX = {};
+
+    /// @brief Texture coordinate indices.
+    std::vector<uint32_t> vtIDX = {};
 };
 
 /// @brief Describes a scene.
@@ -66,29 +58,31 @@ struct Scene
     // std::vector<Material> Materials = {};
 };
 
-/// @brief Wavefront OBJ file loader. Only supports triangulated meshes and doesn't support negative indices.
+/// @brief Wavefront OBJ file loader.
 class WavefrontLoader
 {
 private:
     enum class FaceType
     {
-        None,
         Vertex,
         VertexNormal,
         VertexTextureNormal,
-        VertexTexture
+        VertexTexture,
+        None
     };
 
 public:
     WavefrontLoader() = default;
     ~WavefrontLoader() = default;
 
-    /// @brief Loads a scene from a file.
+    /// @brief Loads a scene from a file.  Only supports triangulated meshes that have at most 3 indices per face.
+    /// Does not support negative indices.
     /// @param path Path to the file.
     /// @return The scene if it was loaded successfully.
-    std::optional<Scene> Load(std::filesystem::path const& path)
+    static std::optional<Scene> Load(const char* path)
     {
         std::ifstream file(path);
+
         if (!file.is_open())
         {
             return std::nullopt;
@@ -107,25 +101,21 @@ public:
 
             if (line[0] == 'o')
             {
-                // Object
-            }
-            else if (line[0] == 'g')
-            {
-                // Group
-            }
-
-            if (outScene.Meshes.empty() || line[0] == 'o')
-            {
                 outScene.Meshes.push_back(Mesh(line.substr(2)));
             }
 
-            Mesh& mesh = outScene.Meshes.back();
-
             if (line[0] == 'v')
             {
+                if (outScene.Meshes.empty())
+                {
+                    outScene.Meshes.push_back(Mesh());
+                }
+
+                Mesh& mesh = outScene.Meshes.back();
+
                 if (line[1] == ' ')
                 {
-                    Vec3 position = mesh.Positions.emplace_back();
+                    Vec3& position = mesh.Positions.emplace_back();
 
                     int n = std::sscanf(line.c_str(), "v %f %f %f", &position.x, &position.y, &position.z);
 
@@ -150,14 +140,21 @@ public:
             }
             else if (line[0] == 'f')
             {
+                // Make sure that a mesh has been created.
+                assert(outScene.Meshes.size() != 0);
+
+                Mesh& mesh = outScene.Meshes.back();
+
                 if (faceType == FaceType::None)
                 {
                     faceType = DetermineFaceType(line);
                 }
 
-                mesh.Indices.emplace_back(ParseIndex(line, faceType));
+                ParseIndices(line, mesh.vIDX, mesh.vnIDX, mesh.vtIDX, faceType);
             }
         }
+
+        return outScene;
     }
 
     /// @brief Convert a mesh to a continous array of vertices so that it can be used with graphics APIs.
@@ -170,110 +167,153 @@ public:
     /// @param mesh Mesh to convert.
     /// @param reserve_floats Number of floats to reserve for each vertex so that you can add additional data to each
     /// vertex. For example, if you want to add a color (3 floats) to each vertex, you would pass 3 here.
-    /// @return The vertices of the mesh.
-    std::vector<float> ConvertToStrided(Mesh const& mesh, uint32_t reserve_floats = 0)
+    /// @return The vertices of the mesh. The new vertices can be indexed with the position indices. The normals
+    /// and texture coord indices are irrelevant to the new vertices.
+    static std::vector<float> ConvertToInterleaved(Mesh const& mesh, uint32_t reserve_floats = 0)
     {
-
+        // Check that the mesh has positions are valid.
         assert(mesh.Positions.size() % 3);
-        assert(mesh.Positions.size() == mesh.Normals.size());
-        assert(mesh.Indices.size() % 3 == 0);
 
-        std::vector<float> vertices(mesh.Positions.size() + mesh.Normals.size() + mesh.TexCoords.size());
+        // Check that the indices are valid.
+        assert(mesh.vIDX.size() % 3 == 0);
+
+        uint32_t vertexCount = mesh.vIDX.size();
 
         const bool hasNormals = !mesh.Normals.empty();
         const bool hasTexCoords = !mesh.TexCoords.empty();
 
         const uint32_t stride = 3 + (hasNormals ? 3 : 0) + (hasTexCoords ? 2 : 0) + reserve_floats;
 
-        for (Index const& index : mesh.Indices)
-        {
-            uint8_t* data = reinterpret_cast<uint8_t*>(&vertices[index.vIdx * stride]);
+        std::vector<float> vertices(vertexCount * stride);
 
-            memcpy(data, &mesh.Positions[index.vIdx], sizeof(Vec3));
+        for (uint32_t i = 0; i < mesh.vIDX.size(); ++i)
+        {
+            uint32_t posIdx = mesh.vIDX[i] - 1; // OBJ indices start at 1.
+
+            uint8_t* data = reinterpret_cast<uint8_t*>(&vertices[posIdx * stride]);
+
+            memcpy(data, &mesh.Positions[posIdx], sizeof(Vec3));
 
             data += sizeof(Vec3);
 
             if (hasNormals)
             {
-                memcpy(data, &mesh.Normals[index.vnIdx], sizeof(Vec3));
+                uint32_t normalIdx = mesh.vnIDX[i] - 1; // OBJ indices start at 1.
+                memcpy(data, &mesh.Normals[normalIdx], sizeof(Vec3));
 
                 data += sizeof(Vec3);
             }
             if (hasTexCoords)
             {
-                memcpy(data, &mesh.TexCoords[index.vtIdx], sizeof(Vec2));
+                uint32_t texCoordIdx = mesh.vtIDX[i] - 1; // OBJ indices start at 1.
+                memcpy(data, &mesh.TexCoords[texCoordIdx], sizeof(Vec2));
             }
         }
-        return std::move(vertices);
+        return vertices;
     }
 
 private:
-    Index ParseIndex(const std::string& line, FaceType faceType)
+    static void ParseIndices(const std::string& line, std::vector<uint32_t>& vIndices, std::vector<uint32_t>& vnIndices,
+                             std::vector<uint32_t>& vtIndices, FaceType faceType)
     {
-        Index outIndex;
-
-        if (faceType == FaceType::Vertex)
+        switch (faceType)
         {
-            int n = std::sscanf(line.c_str(), "f %d %d %d", &outIndex.vIdx, &outIndex.vIdx, &outIndex.vIdx);
+        case WavefrontLoader::FaceType::Vertex:
+        {
+            vIndices.resize(vIndices.size() + 3);
+            uint32_t* vStart = vIndices.data() + vIndices.size() - 3;
 
+            int32_t n = std::sscanf(line.c_str(), "f %i %i %i", vStart, vStart + 1, vStart + 2);
             assert(n == 3);
+            break;
         }
-        else if (faceType == FaceType::VertexNormal)
+        case WavefrontLoader::FaceType::VertexNormal:
         {
-            int n = std::sscanf(line.c_str(), "f %d//%d %d//%d %d//%d", &outIndex.vIdx, &outIndex.vnIdx, &outIndex.vIdx,
-                                &outIndex.vnIdx, &outIndex.vIdx, &outIndex.vnIdx);
+            vIndices.resize(vIndices.size() + 3);
+            vnIndices.resize(vnIndices.size() + 3);
 
+            uint32_t* vStart = &vIndices[vIndices.size() - 3];
+            uint32_t* vnStart = &vnIndices[vnIndices.size() - 3];
+
+            int32_t n = std::sscanf(line.c_str(), "f %i//%i %i//%i %i//%i", vStart, vnStart, vStart + 1, vnStart + 1,
+                                    vStart + 2, vnStart + 2);
             assert(n == 6);
+            break;
         }
-        else if (faceType == FaceType::VertexTextureNormal)
+        case WavefrontLoader::FaceType::VertexTextureNormal:
         {
-            int n = std::sscanf(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d", &outIndex.vIdx, &outIndex.vtIdx,
-                                &outIndex.vnIdx, &outIndex.vIdx, &outIndex.vtIdx, &outIndex.vnIdx, &outIndex.vIdx,
-                                &outIndex.vtIdx, &outIndex.vnIdx);
+            vIndices.resize(vIndices.size() + 3);
+            vtIndices.resize(vtIndices.size() + 3);
+            vnIndices.resize(vnIndices.size() + 3);
 
+            uint32_t* vStart = &vIndices[vIndices.size() - 3];
+            uint32_t* vtStart = &vtIndices[vtIndices.size() - 3];
+            uint32_t* vnStart = &vnIndices[vnIndices.size() - 3];
+
+            int32_t n = std::sscanf(line.c_str(), "f %i/%i/%i %i/%i/%i %i/%i/%i", vStart, vtStart, vnStart, vStart + 1,
+                                    vtStart + 1, vnStart + 1, vStart + 2, vtStart + 2, vnStart + 2);
             assert(n == 9);
+            break;
         }
-        else if (faceType == FaceType::VertexTexture)
+        case WavefrontLoader::FaceType::VertexTexture:
         {
-            int n = std::sscanf(line.c_str(), "f %d/%d %d/%d %d/%d", &outIndex.vIdx, &outIndex.vtIdx, &outIndex.vIdx,
-                                &outIndex.vtIdx, &outIndex.vIdx, &outIndex.vtIdx);
+            vIndices.resize(vIndices.size() + 3);
+            vtIndices.resize(vtIndices.size() + 3);
 
+            uint32_t* vStart = &vIndices[vIndices.size() - 3];
+            uint32_t* vtStart = &vtIndices[vtIndices.size() - 3];
+
+            int32_t n = std::sscanf(line.c_str(), "f %i/%i %i/%i %i/%i", vStart, vtStart, vStart + 1, vtStart + 1,
+                                    vStart + 2, vtStart + 2);
             assert(n == 6);
+            break;
+        }
+        case WavefrontLoader::FaceType::None:
+        {
+            // This should never happen.
+            assert(false);
+            break;
+        }
         }
     }
 
-    FaceType DetermineFaceType(const std::string& line)
+    static FaceType DetermineFaceType(const std::string& line)
     {
+        bool insideSpace = false;
+        bool consecutiveSlashes = false;
+        uint32_t slashCount = 0;
+        uint32_t lastSlashIndex = ~0; // set to max vaie so that its not equal to 0.
+        uint32_t index = 0;
 
-        bool doubleSlashes = line.find("//") != std::string::npos;
-        bool slashes = line.find("/") != std::string::npos;
+        for (char c : line)
+        {
+            if (c == ' ')
+            {
+                if (insideSpace) // if we encounter a space after a space, we are done.
+                {
+                    break;
+                }
+                insideSpace = true;
+            }
+            else if (c == '/')
+            {
+                if (lastSlashIndex == index - 1)
+                {
+                    consecutiveSlashes = true;
+                    return FaceType::VertexNormal;
+                }
+                lastSlashIndex = index;
+                slashCount++;
+            }
+            index++;
+        }
 
-        // If there are no slashes, the face type is Vertex.
-        // eg. f 1 2 3
-        if (!doubleSlashes && !slashes)
+        switch (slashCount)
         {
-            return FaceType::Vertex;
-        }
-        // If there are double slashes, the face type is VertexNormal.
-        // eg. f 1//1 2//2 3//3
-        else if (doubleSlashes)
-        {
-            return FaceType::VertexNormal;
-        }
-        else if (slashes)
-        {
-            // If there are no double slashes, the face type is VertexTextureNormal.
-            // eg. f 1/1/1 2/2/2 3/3/3
-            if (!doubleSlashes)
-            {
-                return FaceType::VertexTextureNormal;
-            }
-            // There are no double slashes, but there are slashes, so the face type is VertexTexture.
-            // eg. f 1/1 2/2 3/3
-            else
-            {
-                return FaceType::VertexTexture;
-            }
+        case 0: return FaceType::Vertex;
+        case 1: return FaceType::VertexTexture;
+        case 2: return FaceType::VertexTextureNormal;
+        default: return FaceType::None;
         }
     }
 };
