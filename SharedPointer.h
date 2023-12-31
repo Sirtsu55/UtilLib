@@ -160,7 +160,6 @@ private:
         if (mData == nullptr)
             return;
 
-        // First four bytes of the data is the reference count.
         uint32_t& referenceCount = *GetReferenceData();
 
         referenceCount++;
@@ -168,7 +167,6 @@ private:
 
     inline void RemoveReference()
     {
-        // First four bytes of the data is the reference count.
         uint32_t& referenceCount = *GetReferenceData();
 
         if (mData == nullptr)
