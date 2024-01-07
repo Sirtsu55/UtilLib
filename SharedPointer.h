@@ -86,7 +86,7 @@ public:
     /// @tparam U the base class type.
     /// @param other the other shared pointer.
     template<typename U>
-    operator SharedPointer<U>() const
+    operator SharedPointer<U>()
     {
         static_assert(std::is_base_of<U, T>::value, "U must be a base class of T");
 
@@ -130,6 +130,14 @@ public:
     /// @brief Check if the pointer is unique.
     /// @return true if the reference count is 1.
     bool unique() { return mData->ReferenceCount == 1; }
+
+    /// @brief Reset the shared pointer removing the reference to the data and deleting the data if the reference count
+    /// is 0.
+    void reset()
+    {
+        RemoveReference();
+        mData = nullptr;
+    }
 
     /// @brief Cast the shared pointer to a shared pointer of another type, this checks if the cast is valid and if it
     /// is invalid it returns a null shared pointer.
