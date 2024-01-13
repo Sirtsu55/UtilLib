@@ -1,5 +1,3 @@
-#pragma once
-
 template<typename T>
 class SharedPointer
 {
@@ -15,7 +13,14 @@ public:
     /// CreateSharedPointer FUNCTION INSTEAD. Does not increment the reference count because it is assumed that the
     /// reference count is handled externally.
     /// @param data the data pointer.
-    explicit SharedPointer(uint8_t* data) : mData(data) {}
+    explicit SharedPointer(uint8_t* data)
+        : mData(reinterpret_cast<uint8_t*>(data))
+#ifndef NDEBUG // In debug mode store the object pointer as well.
+          ,
+          mObject(reinterpret_cast<T*>(data + sizeof(uint32_t)))
+#endif
+    {
+    }
 
     /// @brief Copy constructor, increments the reference count.
     /// @param other the other shared pointer.
@@ -129,7 +134,7 @@ public:
 
     /// @brief Check if the pointer is unique.
     /// @return true if the reference count is 1.
-    bool unique() { return mData->ReferenceCount == 1; }
+    bool unique() { return *GetReferenceData() == 1; }
 
     /// @brief Reset the shared pointer removing the reference to the data and deleting the data if the reference count
     /// is 0.
@@ -199,12 +204,19 @@ private:
         if (referenceCount == 0)
         {
             GetData()->~T(); // Call the destructor of the data.
-            delete mData;
+            delete[] mData; // Delete the data.
         }
     }
 
     /// @brief Internal data structure for the shared pointer.
     uint8_t* mData;
+
+#ifndef NDEBUG
+    /// @brief In debug mode this allows for the inspection of the object when looking at the shared pointer.
+    /// otherwise only a pointer to the data is stored and it displays a character. For release builds this is
+    /// optimized away.
+    T* mObject;
+#endif
 
     // Friend functions that create shared pointers.
     template<typename U, typename... Args>
@@ -223,12 +235,13 @@ constexpr SharedPointer<T> CreateSharedPointer(Args&&... args)
 {
     uint8_t* data = new uint8_t[sizeof(uint32_t) + sizeof(T)]; // Allocate memory for the data and the reference count.
 
-    // First four bytes of the data is the reference count. Set it to 1 because the shared pointer will have a
-    // reference to it.
-    *reinterpret_cast<uint32_t*>(data) = 1;
-
     // Construct new object in the allocated memory.
     T* object = new (data + sizeof(uint32_t)) T(std::forward<Args>(args)...);
+    uint32_t* ref = reinterpret_cast<uint32_t*>(data);
+
+    // First four bytes of the data is the reference count. Set it to 1 because the shared pointer will have a
+    // reference to it.
+    *ref = 1;
 
     return SharedPointer<T>(data);
 }
@@ -239,12 +252,13 @@ constexpr SharedPointer<T> CreateSharedPointer()
 {
     uint8_t* data = new uint8_t[sizeof(uint32_t) + sizeof(T)]; // Allocate memory for the data and the reference count.
 
-    // First four bytes of the data is the reference count. Set it to 1 because the shared pointer will have a
-    // reference to it.
-    *reinterpret_cast<uint32_t*>(data) = 1;
-
     // Construct new object in the allocated memory.
     T* object = new (data + sizeof(uint32_t)) T();
+    uint32_t* ref = reinterpret_cast<uint32_t*>(data);
+
+    // First four bytes of the data is the reference count. Set it to 1 because the shared pointer will have a
+    // reference to it.
+    *ref = 1;
 
     return SharedPointer<T>(data);
 }
