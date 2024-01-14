@@ -1,3 +1,9 @@
+#pragma once
+
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 template<typename T>
 class SharedPointer
 {
@@ -217,13 +223,6 @@ private:
     /// optimized away.
     T* mObject;
 #endif
-
-    // Friend functions that create shared pointers.
-    template<typename U, typename... Args>
-    constexpr friend SharedPointer<U> CreateSharedPointer(Args&&... args);
-
-    template<typename U>
-    constexpr friend SharedPointer<U> CreateSharedPointer();
 };
 
 /// @brief Create a shared pointer from template arguments.
