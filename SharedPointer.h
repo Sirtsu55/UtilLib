@@ -136,11 +136,11 @@ public:
 
     /// @brief Get the reference count.
     /// @return the reference count.
-    uint32_t use_count() { return *GetReferenceData(); }
+    uint32_t use_count() const { return *GetReferenceData(); }
 
     /// @brief Check if the pointer is unique.
     /// @return true if the reference count is 1.
-    bool unique() { return *GetReferenceData() == 1; }
+    bool unique() const { return *GetReferenceData() == 1; }
 
     /// @brief Reset the shared pointer removing the reference to the data and deleting the data if the reference count
     /// is 0.
@@ -171,6 +171,17 @@ public:
         return SharedPointer<U>(mData);
     }
 
+    /// @brief Cast the shared pointer to a raw pointer of another type, this checks if the cast is valid and if it is
+    /// invalid it returns a null raw pointer. No reference is added to the data so it is possible that the data is
+    /// deleted while the raw pointer is still used.
+    /// @tparam U the type to cast to.
+    /// @return the down casted raw pointer, or a null raw pointer if the cast is invalid.
+    template<typename U>
+    U* dyn_cast_raw() const
+    {
+        return dynamic_cast<U*>(GetData());
+    }
+
     /// @brief Cast the shared pointer to a shared pointer of another type, this doesn't check if the cast is valid so
     /// in case of an invalid cast it is undefined behavior.
     /// @tparam U the type to cast to.
@@ -181,6 +192,17 @@ public:
         // Add reference to the data, because the new shared pointer will have a reference to it.
         AddReference();
         return SharedPointer<U>(mData);
+    }
+
+    /// @brief Cast the shared pointer to a raw pointer of another type, this doesn't check if the cast is valid so
+    /// in case of an invalid cast it is undefined behavior. No reference is added to the data so it is possible
+    /// that the data is deleted while the raw pointer is still used.
+    /// @tparam U the type to cast to.
+    /// @return the casted raw pointer.
+    template<typename U>
+    U* cast_raw() const
+    {
+        return reinterpret_cast<U*>(GetData());
     }
 
 private:
