@@ -182,8 +182,8 @@ public:
         return dynamic_cast<U*>(GetData());
     }
 
-    /// @brief Cast the shared pointer to a shared pointer of another type, this doesn't check if the cast is valid so
-    /// in case of an invalid cast it is undefined behavior.
+    /// @brief Cast the shared pointer to a shared pointer of another type, this doesn't check if the cast is valid at
+    /// runtime so in case of an invalid cast it is undefined behavior.
     /// @tparam U the type to cast to.
     /// @return the casted shared pointer.
     template<typename U>
