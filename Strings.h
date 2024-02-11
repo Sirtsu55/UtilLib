@@ -4,58 +4,58 @@
 #include <string>
 #include <cstring>
 
-class CString;
-class WString;
+class NString;
+class WideString;
 
-/// @brief CString class.
-class CString
+/// @brief NString class.
+class NString
 {
 public:
     /// @brief Default constructor.
-    CString();
+    NString();
 
     /// @brief Constructor from string.
     /// @param str String.
-    CString(const std::string& str);
+    NString(const std::string& str);
 
     /// @brief Constructor from string.
     /// @param str String.
-    CString(const char* str);
+    NString(const char* str);
 
     /// @brief Constructor from wide string.
     /// @param str Wide string.
-    CString(const std::wstring& str);
+    NString(const std::wstring& str);
 
     /// @brief Constructor from wide string.
     /// @param str Wide string.
-    CString(const wchar_t* str);
+    NString(const wchar_t* str);
 
-    /// @brief Constructor from WString.
-    /// @param str WString.
-    CString(const WString& str);
+    /// @brief Constructor from WideString.
+    /// @param str WideString.
+    NString(const WideString& str);
 
     /// @brief Destructor.
-    ~CString();
+    ~NString();
 
     /// @brief Copy constructor.
     /// @param other Other string.
-    CString(const CString& other);
+    NString(const NString& other);
 
     /// @brief Move constructor.
     /// @param other Other string.
-    CString(CString&& other);
+    NString(NString&& other);
 
     /// @brief Copy assignment operator.
     /// @param other Other string.
-    CString& operator=(const CString& other);
+    NString& operator=(const NString& other);
 
     /// @brief Move assignment operator.
     /// @param other Other string.
-    CString& operator=(CString&& other);
+    NString& operator=(NString&& other);
 
     /// @brief Equality operator.
     /// @param other Other string.
-    bool operator==(const CString& other) const;
+    bool operator==(const NString& other) const;
 
     /// @brief Array subscript operator.
     /// @param index Index.
@@ -92,55 +92,55 @@ private:
     uint32_t mSize = 0;
 };
 
-/// @brief WString class.
-class WString
+/// @brief WideString class.
+class WideString
 {
 public:
     /// @brief Default constructor.
-    WString();
+    WideString();
 
     /// @brief Constructor from string.
     /// @param str String.
-    WString(const std::string& str);
+    WideString(const std::string& str);
 
     /// @brief Constructor from string.
     /// @param str String.
-    WString(const char* str);
+    WideString(const char* str);
 
     /// @brief Constructor from wide string.
     /// @param str Wide string.
-    WString(const std::wstring& str);
+    WideString(const std::wstring& str);
 
     /// @brief Constructor from wide string.
     /// @param str Wide string.
-    WString(const wchar_t* str);
+    WideString(const wchar_t* str);
 
-    /// @brief Constructor from CString.
-    /// @param str CString.
-    WString(const CString& str);
+    /// @brief Constructor from NString.
+    /// @param str NString.
+    WideString(const NString& str);
 
     /// @brief Destructor.
-    ~WString();
+    ~WideString();
 
     /// @brief Copy constructor.
     /// @param other Other string.
-    WString(const WString& other);
+    WideString(const WideString& other);
 
     /// @brief Move constructor.
     /// @param other Other string.
-    WString(WString&& other);
+    WideString(WideString&& other);
 
     /// @brief Copy assignment operator.
     /// @param other Other string.
-    WString& operator=(const WString& other);
+    WideString& operator=(const WideString& other);
 
     /// @brief Move assignment operator.
     /// @param other Other string.
-    WString& operator=(WString&& other);
+    WideString& operator=(WideString&& other);
 
     /// @brief Equality operator.
     /// @param other Other string.
-    bool operator==(const WString& other) const;
+    bool operator==(const WideString& other) const;
 
     /// @brief Array subscript operator.
     /// @param index Index.
@@ -177,77 +177,68 @@ private:
 };
 
 /// ---------------------
-/// CString implementation
+/// NString implementation
 /// ---------------------
 
-inline CString::CString()
+inline NString::NString()
 {
     mStr[0] = '\0';
 }
 
-inline CString::CString(const std::string& str)
+inline NString::NString(const std::string& str)
 {
     strcpy(mStr, str.c_str());
 
     mSize = str.size();
 }
 
-inline CString::CString(const char* str)
+inline NString::NString(const char* str)
 {
     strcpy(mStr, str);
 
     mSize = strlen(str);
 }
 
-inline CString::CString(const std::wstring& str)
+inline NString::NString(const std::wstring& str)
 {
     wcstombs(mStr, str.c_str(), 32);
 
     mSize = str.size();
 }
 
-inline CString::CString(const wchar_t* str)
+inline NString::NString(const wchar_t* str)
 {
     wcstombs(mStr, str, 32);
 
     mSize = wcslen(str);
 }
 
-inline CString::CString(const WString& str)
+inline NString::NString(const WideString& str)
 {
     wcstombs(mStr, str.c_str(), 32);
 
     mSize = str.size();
 }
 
-inline CString::~CString()
+inline NString::~NString()
 {
 }
 
-inline CString::CString(const CString& other)
-{
-    strcpy(mStr, other.mStr);
-
-    mSize = other.mSize;
-}
-
-inline CString::CString(CString&& other)
+inline NString::NString(const NString& other)
 {
     strcpy(mStr, other.mStr);
 
     mSize = other.mSize;
 }
 
-inline CString& CString::operator=(const CString& other)
+inline NString::NString(NString&& other)
 {
     strcpy(mStr, other.mStr);
 
     mSize = other.mSize;
-
-    return *this;
 }
 
-inline CString& CString::operator=(CString&& other)
+inline NString& NString::operator=(const NString& other)
 {
     strcpy(mStr, other.mStr);
 
@@ -256,103 +247,103 @@ inline CString& CString::operator=(CString&& other)
     return *this;
 }
 
-inline bool CString::operator==(const CString& other) const
+inline NString& NString::operator=(NString&& other)
+{
+    strcpy(mStr, other.mStr);
+
+    mSize = other.mSize;
+
+    return *this;
+}
+
+inline bool NString::operator==(const NString& other) const
 {
     return strcmp(mStr, other.mStr) == 0;
 }
 
-inline const char& CString::operator[](uint32_t index) const
+inline const char& NString::operator[](uint32_t index) const
 {
     return mStr[index];
 }
 
-inline uint32_t CString::size() const
+inline uint32_t NString::size() const
 {
     return mSize;
 }
 
-inline const char* CString::c_str() const
+inline const char* NString::c_str() const
 {
     return mStr;
 }
 
-inline const char* CString::data() const
+inline const char* NString::data() const
 {
     return mStr;
 }
 
 /// ---------------------
-/// WString implementation
+/// WideString implementation
 /// ---------------------
 
-inline WString::WString()
+inline WideString::WideString()
 {
     mStr[0] = L'\0';
 }
 
-inline WString::WString(const std::string& str)
+inline WideString::WideString(const std::string& str)
 {
     mbstowcs(mStr, str.c_str(), 32);
 
     mSize = str.size();
 }
 
-inline WString::WString(const char* str)
+inline WideString::WideString(const char* str)
 {
     mbstowcs(mStr, str, 32);
 
     mSize = strlen(str);
 }
 
-inline WString::WString(const std::wstring& str)
+inline WideString::WideString(const std::wstring& str)
 {
     wcscpy(mStr, str.c_str());
 
     mSize = str.size();
 }
 
-inline WString::WString(const wchar_t* str)
+inline WideString::WideString(const wchar_t* str)
 {
     wcscpy(mStr, str);
 
     mSize = wcslen(str);
 }
 
-inline WString::WString(const CString& str)
+inline WideString::WideString(const NString& str)
 {
     mbstowcs(mStr, str.c_str(), 32);
 
     mSize = str.size();
 }
 
-inline WString::~WString()
+inline WideString::~WideString()
 {
 }
 
-inline WString::WString(const WString& other)
-{
-    wcscpy(mStr, other.mStr);
-
-    mSize = other.mSize;
-}
-
-inline WString::WString(WString&& other)
+inline WideString::WideString(const WideString& other)
 {
     wcscpy(mStr, other.mStr);
 
     mSize = other.mSize;
 }
 
-inline WString& WString::operator=(const WString& other)
+inline WideString::WideString(WideString&& other)
 {
     wcscpy(mStr, other.mStr);
 
     mSize = other.mSize;
-
-    return *this;
 }
 
-inline WString& WString::operator=(WString&& other)
+inline WideString& WideString::operator=(const WideString& other)
 {
     wcscpy(mStr, other.mStr);
 
@@ -361,27 +352,36 @@ inline WString& WString::operator=(WString&& other)
     return *this;
 }
 
-inline bool WString::operator==(const WString& other) const
+inline WideString& WideString::operator=(WideString&& other)
+{
+    wcscpy(mStr, other.mStr);
+
+    mSize = other.mSize;
+
+    return *this;
+}
+
+inline bool WideString::operator==(const WideString& other) const
 {
     return wcscmp(mStr, other.mStr) == 0;
 }
 
-inline const wchar_t& WString::operator[](uint32_t index) const
+inline const wchar_t& WideString::operator[](uint32_t index) const
 {
     return mStr[index];
 }
 
-inline uint32_t WString::size() const
+inline uint32_t WideString::size() const
 {
     return mSize;
 }
 
-inline const wchar_t* WString::c_str() const
+inline const wchar_t* WideString::c_str() const
 {
     return mStr;
 }
 
-inline const wchar_t* WString::data() const
+inline const wchar_t* WideString::data() const
 {
     return mStr;
 }
@@ -390,12 +390,12 @@ inline const wchar_t* WString::data() const
 /// String conversion to STL strings
 /// ---------------------
 
-inline CString::operator std::string()
+inline NString::operator std::string()
 {
     return std::string(mStr);
 }
 
-inline CString::operator std::wstring()
+inline NString::operator std::wstring()
 {
     std::wstring wStr = {};
     wStr.resize(32);
@@ -405,7 +405,7 @@ inline CString::operator std::wstring()
     return wStr;
 }
 
-inline WString::operator std::string()
+inline WideString::operator std::string()
 {
     std::string str = {};
     str.resize(32);
@@ -415,7 +415,7 @@ inline WString::operator std::string()
     return str;
 }
 
-inline WString::operator std::wstring()
+inline WideString::operator std::wstring()
 {
     return std::wstring(mStr);
 }
