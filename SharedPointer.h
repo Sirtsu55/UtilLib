@@ -93,20 +93,6 @@ public:
         return *this;
     }
 
-    /// @brief Implicit conversion operator to a shared pointer of a base class type.
-    /// @tparam U the base class type.
-    /// @param other the other shared pointer.
-    template<typename U>
-    operator SharedPointer<U>()
-    {
-        static_assert(std::is_base_of<U, T>::value, "U must be a base class of T");
-
-        // Add reference to the data, because the new shared pointer will have a reference to it.
-        AddReference();
-
-        return SharedPointer<U>(mData);
-    }
-
     /// @brief Access operator.
     /// @return pointer to the data.
     T* operator->() const { return GetData(); }
